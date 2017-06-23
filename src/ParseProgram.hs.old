@@ -1,0 +1,44 @@
+{-# LANGUAGE FlexibleContexts, OverlappingInstances #-}
+module ParseProgram where
+import Text.ParserCombinators.Parsec
+import Text.Parsec
+import Text.Parsec.Prim
+import Data.Maybe
+import Data.List
+import DataType
+import Flatten
+
+parseProgram :: Spec -> String -> Either ParseError [[[[String]]]]
+parseProgram spec text = parse (startP spec) "(unknown)" text
+
+startP ::Spec -> ParsecT s u m [[[[String]]]]
+startP spec = do
+     -- string $ value (head (values (head (innerRules (head (rules spec))))))
+    x <- mapM (parseRule spec) (rules spec)
+    return x
+
+parseRule ::Spec -> Rule -> ParsecT s u m [[[String]]]
+parseRule spec rule = do
+    ret <- mapM (parseInnerRule spec) (innerRules rule)
+    return ret
+
+parseInnerRule :: Spec -> Rule -> ParsecT s u m [[String]]
+parseInnerRule spec inRule = do
+    ret <- mapM (parseValue spec) (values inRule)
+    return ret
+
+
+--parseValue ::Spec -> Value -> ParsecT s u m [String]
+parseValue spec (Prim primValue) = do
+    --y  <- (string primValue)
+    y <- char 'a'
+    return $ ([[y]] :: [String])
+parseValue spec (Rcall rule) = do
+    let x = filter (testRule rule) (rules spec)
+    y <-  parseRule spec (head x)
+    let flat_list = (flatten y) :: [String]
+    return flat_list
+
+
+testRule :: String -> Rule -> Bool
+testRule ruleWeNeed rule =   (ruleName rule) == ruleWeNeed

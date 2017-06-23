@@ -1,0 +1,37 @@
+module CreateBS where
+import Data.Binary.Put
+import Data.Bits
+import DataType
+import Data.Word
+import qualified Data.ByteString.Lazy as BL
+
+-- main :: IO ()
+-- main = BL.putStr $ runPut (putWord8 16)
+-- way to bit maipulate bits, shift by offset and (add, might be better to bitwise or), shiftL assuming litte E
+-- if a number dosen't fit in its offset it will effect the next numbers
+-- this can prop be done with a fold
+-- (0 `shiftL` 0) + (1 `shiftL` 4) + (2 `shiftL` 8) + (15 `shiftL` 12)
+
+createBS :: [Statement] -> BL.ByteString
+createBS statments = binary
+    where
+        binary = foldl BL.append BL.empty parts
+        parts = map runPut (makePut statments)
+
+makePut :: [Statement] -> [Put]
+makePut test = map makeStatement test
+
+makeStatement:: Statement -> Put
+makeStatement (MCI wordSlices) = thing
+    where
+        some = foldl doStuff (0,0) wordSlices
+        thing = putWord8 $ fromIntegral $  snd some
+
+doStuff :: (Int,Int) -> WordSlice -> (Int,Int)
+doStuff (offsetA, acc) (WS num (L wordSize word startPoint offset)) = (newOffset,newACC)
+    where
+        newOffset = offsetA + (readInt offset)
+        newACC = acc .|. ((readInt num) `shiftL` offsetA)
+
+readInt :: String -> Int
+readInt = read
